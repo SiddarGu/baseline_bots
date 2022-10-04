@@ -236,7 +236,180 @@ def get_province_from_order(order):
     else:
         return order_tokens[0]
 
+def dipnet_to_daide_parsing(dipnet_style_order_strs: List[str], game: Game) -> List[str]:
+    """
+    Convert dipnet style single order to DAIDE style order. Needs game instance to determine the powers owning the units
 
+    :param dipnet_style_order_strs: dipnet style list of orders to be converted to DAIDE
+    :param game: game instance
+    :return: DAIDE style order string
+    """
+    def daidefy_suborder(dipnet_suborder: str) -> str:
+        """
+        Translates dipnet style units to DAIDE style units
+        E.g. for initial game state
+        A BUD       --> AUS AMY BUD
+        F TRI       --> AUS FLT TRI
+        A PAR       --> FRA AMY PAR
+        A MAR       --> FRA AMY MAR
+
+        :param dipnet_suborder: dipnet suborder to be encoded
+        :return: DAIDE-style suborder
+        """
+        if dipnet_suborder not in unit_game_mapping:
+            raise f"error from utils.dipnet_to_daide_parsing: unit {dipnet_suborder} not present in unit_game_mapping"
+        return "(" + (" ".join(
+            [
+                unit_game_mapping[dipnet_suborder],
+                "AMY" if dipnet_suborder[0] == "A" else "FLT",
+                dipnet_suborder.split()[-1]
+            ]
+        ) ) + ")"
+    
+    convoy_map = defaultdict(list)
+    dipnet_style_order_strs_tokens = [None for _ in range(len(dipnet_style_order_strs))]
+
+    # Convert strings to order tokens and store a dictionary mapping of armies to be convoyed and fleets helping to convoy
+    for i in range(len(dipnet_style_order_strs)):
+        dipnet_style_order_strs_tokens[i] = get_order_tokens(dipnet_style_order_strs[i])
+        if dipnet_style_order_strs_tokens[i][1] == 'C':
+            convoy_map[dipnet_style_order_strs_tokens[i][2] + dipnet_style_order_strs_tokens[i][3]].append(dipnet_style_order_strs_tokens[i][0].split()[-1])
+    
+    daide_orders = []
+
+    # For each order
+    for dipnet_order_tokens in dipnet_style_order_strs_tokens:
+
+        # Create unit to power mapping for constructing DAIDE tokens
+        unit_game_mapping = {}
+        for power in list(game.powers.keys()):
+            for unit in game.get_units(power):
+                unit_game_mapping[unit] = power[:3]
+
+        daide_order = []
+
+        # Daidefy and add source unit as it is
+        daide_order.append(daidefy_suborder(dipnet_order_tokens[0]))
+        if dipnet_order_tokens[1] == "S":
+            # Support orders
+            daide_order.append("SUP")
+            daide_order.append(daidefy_suborder(dipnet_order_tokens[2]))
+            if len(dipnet_order_tokens) == 4 and dipnet_order_tokens[3] != "H":
+                daide_order.append("MTO")
+                daide_order.append(dipnet_order_tokens[3].split()[-1])
+            elif len(dipnet_order_tokens) > 4:
+                raise f"error from utils.dipnet_to_daide_parsing: order {dipnet_order_tokens} is UNEXPECTED. Update code to handle this case!!!"
+        elif dipnet_order_tokens[1] == "H":
+            # Hold orders
+            daide_order.append("HLD")
+        elif dipnet_order_tokens[1] == "C":
+            # Convoy orders
+            daide_order.append("CVY")
+            daide_order.append(daidefy_suborder(dipnet_order_tokens[2]))
+            daide_order.append("CTO")
+            daide_order.append(dipnet_order_tokens[3].split()[-1])
+        elif len(dipnet_order_tokens) >= 3 and dipnet_order_tokens[2] == "VIA":
+            # VIA/CTO orders
+            daide_order.append("CTO")
+            daide_order.append(dipnet_order_tokens[1].split()[-1])
+            daide_order.append("VIA")
+            if dipnet_order_tokens[0] + dipnet_order_tokens[1] in convoy_map:
+                daide_order.append(f"({' '.join(convoy_map[dipnet_order_tokens[0] + dipnet_order_tokens[1]])})")
+            else:
+                print(f"unexpected situation at utils.dipnet_to_daide_parsing. Found order {dipnet_order_tokens} which doesn't have convoying fleet in its own set of orders")
+        else:
+            # Move orders
+            daide_order.append("MTO")
+            daide_order.append(dipnet_order_tokens[1].split()[-1])
+            if len(dipnet_order_tokens) > 2:
+                raise f"error from utils.dipnet_to_daide_parsing: order {dipnet_order_tokens} is UNEXPECTED. Update code to handle this case!!!"
+        daide_orders.append(" ".join(daide_order))
+
+    return daide_orders
+
+
+def daide_to_dipnet_parsing(daide_style_order_str: str) -> str:
+    """
+    Convert DAIDE style single order to dipnet style order
+
+    :param daide_style_order_str: DAIDE style string to be converted to dipnet style
+    :return: dipnet style order string
+    """
+    def split_into_groups(daide_style_order_str: str) -> List[str]:
+        """
+        Split the string based on parenthesis or spaces
+        E.g.
+        "(FRA AMY PAR) SUP (FRA AMY MAR) MTO BUR" --> "(FRA AMY PAR)", "SUP", "(FRA AMY MAR)", "MTO", "BUR"
+
+        :param daide_style_order_str: DAIDE style string
+        :return: list of strings containing components of the order which makes it easy to convert to dipnet-style order
+        """
+        open_brack = False
+        stack = ""
+        grouped_order = []
+        for char in daide_style_order_str:
+            if (not(open_brack) and char == ' ') or char == ')':
+                if stack:
+                    grouped_order.append(stack)
+                    stack = ""
+                    open_brack = False
+            elif char == '(':
+                open_brack = True
+            else:
+                stack += char
+        if stack:
+            grouped_order.append(stack)
+        return grouped_order
+    daide_style_order_groups = split_into_groups(daide_style_order_str)
+
+    def dipnetify_suborder(suborder: str) -> str:
+        """
+        Translates DAIDE style units to dipnet style units
+
+        :param suborder: DAIDE-style suborder to be encoded
+        :return: dipnet suborder
+        """
+        suborder_tokens = suborder.split()
+        return suborder_tokens[1][0] + " " + suborder_tokens[2]
+
+    dipnet_order = []
+
+    # Dipnetify source unit
+    dipnet_order.append(dipnetify_suborder(daide_style_order_groups[0]))
+    if daide_style_order_groups[1] == "SUP":
+        # Support order
+        dipnet_order.append("S")
+        dipnet_order.append(dipnetify_suborder(daide_style_order_groups[2]))
+        if len(daide_style_order_groups) == 5 and daide_style_order_groups[3] == "MTO":
+            dipnet_order.append("-")
+            dipnet_order.append(daide_style_order_groups[4])
+        elif len(daide_style_order_groups) > 5:
+            raise f"error from utils.daide_to_dipnet_parsing: order {daide_style_order_groups} is UNEXPECTED. Update code to handle this case!!!"
+    elif daide_style_order_groups[1] == "HLD":
+        # Hold order
+        dipnet_order.append("H")
+    elif daide_style_order_groups[1] == "CTO":
+        # CTO order
+        dipnet_order.append("-")
+        dipnet_order.append(daide_style_order_groups[2])
+        dipnet_order.append("VIA")
+    elif daide_style_order_groups[1] == "CVY":
+        # Convoy order
+        dipnet_order.append("C")
+        dipnet_order.append(dipnetify_suborder(daide_style_order_groups[2]))
+        dipnet_order.append("-")
+        dipnet_order.append(daide_style_order_groups[4])
+    elif daide_style_order_groups[1] == "MTO":
+        # Move orders
+        dipnet_order.append("-")
+        dipnet_order.append(daide_style_order_groups[2])
+        if len(daide_style_order_groups) > 3:
+            raise f"error from utils.daide_to_dipnet_parsing: order {daide_style_order_groups} is UNEXPECTED. Update code to handle this case!!!"
+    else:
+        raise f"error from utils.daide_to_dipnet_parsing: order {daide_style_order_groups} is UNEXPECTED. Update code to handle this case!!!"
+
+    return " ".join(dipnet_order)
+    
 class MessagesData:
     def __init__(self):
         self.messages = []
@@ -312,30 +485,57 @@ def get_state_value(bot, game, power_name):
 @gen.coroutine
 def get_best_orders(bot, proposal_order: dict, shared_order: dict):
     """
-    input: sender power, dipnet_order + incoming proposals {power: [orders]}, shared_orders (info about other power), Diplomacy game
-    output: [orders] a list of orders (with best value)
-                for each xdo order set (max at 6 for now) -> simulate worlds by execute all of shared orders + xdo order set
+    input:
+        bot: A bot instance e.g. RealPolitik
+        proposal_order: a dictionary of key=power name of proposer, value=list of orders. This can include self base order
+                        i.e. if a bot is RealPolitik, its base order is from DipNet
+        shared_order: a dictionary of key=power name of proposer, value=list of orders. The proposers share info (or orders) about the current turn,
+                    where we can use these shared order to our current turn in a simulated game to roll out with most correct info.
+    output:
+        best_proposer: best power that propose the best orders to a bot, this can be itself
+        proposal_order[best_proposer]: the orders from the best proposer
     """
+
+    # initialize state value for each proposal
     state_value = {power: -10000 for power in bot.game.powers}
+
+    # get state value for each proposal
     for proposer, unit_orders in proposal_order.items():
+
+        # if there is a proposal from this power
         if unit_orders:
             proposed = True
+
+            # simulate game by copying the current one
             simulated_game = bot.game.__deepcopy__(None)
+
+            # censor aggressive orders
             unit_orders = get_non_aggressive_orders(
                 unit_orders, bot.power_name, bot.game
             )
+
+            # set orders as a proposal order
             simulated_game.set_orders(power_name=bot.power_name, orders=unit_orders)
+
+            # consider shared orders in a simulated game
             for other_power, power_orders in shared_order.items():
-                # if they are not sharing any info about their orders then assume that they are dipnet
+
+                # if they are not sharing any info about their orders then assume that they are DipNet-based
                 if not power_orders:
                     power_orders = yield bot.brain.get_orders(game, other_power)
                 simulated_game.set_orders(power_name=other_power, orders=power_orders)
 
+            # process current turn
             simulated_game.process()
+
+            # rollout and get state value
             state_value[proposer] = yield get_state_value(
                 bot, simulated_game, bot.power_name
             )
+
+    # get power name that gives the max state value
     best_proposer = max(state_value, key=state_value.get)
+
     return best_proposer, proposal_order[best_proposer]
 
 
