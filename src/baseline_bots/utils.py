@@ -9,11 +9,25 @@ __email__ = "sanderschulhoff@gmail.com"
 # from diplomacy_research.models.state_space import get_order_tokens
 import re
 from collections import defaultdict
-from typing import Dict, List, Tuple
+from copy import deepcopy
+from typing import Dict, List, Tuple, Union
 
+import numpy as np
+from DAIDE import ALY, FCT, HUH, ORR, PRP, XDO
 from DAIDE.utils.exceptions import ParseError
 from diplomacy import Game, Message
+from diplomacy.utils import strings
 from tornado import gen
+
+POWER_NAMES_DICT = {
+    "RUS": "RUSSIA",
+    "AUS": "AUSTRIA",
+    "ITA": "ITALY",
+    "ENG": "ENGLAND",
+    "FRA": "FRANCE",
+    "TUR": "TURKEY",
+    "GER": "GERMANY",
+}
 
 
 def get_order_tokens(order):
@@ -45,23 +59,23 @@ def AND(arrangements: List[str]) -> str:
     return "AND" + "".join([f" ({a})" for a in arrangements])
 
 
-def ORR(arrangements: List[str]) -> str:
-    """
-    ORRs together an array of arrangements
-    """
+# def ORR(arrangements: List[str]) -> str:
+#     """
+#     ORRs together an array of arrangements
+#     """
 
-    if len(arrangements) < 2:
-        return "".join([f"({a})" for a in arrangements])
-        # raise Exception("Need at least 2 items to ORR")
+#     if len(arrangements) < 2:
+#         return "".join([f"({a})" for a in arrangements])
+#         # raise Exception("Need at least 2 items to ORR")
 
-    return "ORR" + "".join([f" ({a})" for a in arrangements])
+#     return "ORR" + "".join([f" ({a})" for a in arrangements])
 
 
-def XDO(orders: List[str]) -> List[str]:
-    """
-    Adds XDO to each order in array
-    """
-    return [f"XDO ({order})" for order in orders]
+# def XDO(orders: List[str]) -> List[str]:
+#     """
+#     Adds XDO to each order in array
+#     """
+#     return [f"XDO ({order})" for order in orders]
 
 
 def get_other_powers(powers: List[str], game: Game):
@@ -92,9 +106,14 @@ def REJ(string) -> str:
     return f"REJ ({string})"
 
 
-def FCT(string) -> str:
-    """Forms FCT message"""
-    return f"FCT ({string})"
+# def FCT(string) -> str:
+#     """Forms FCT message"""
+#     return f"FCT ({string})"
+
+
+# def HUH(string) -> str:
+#     """Forms HUH message"""
+#     return f"HUH ({string})"
 
 
 def parse_FCT(msg) -> str:
@@ -102,7 +121,7 @@ def parse_FCT(msg) -> str:
     if "FCT" not in msg:
         raise ParseError("This is not an FCT message")
     try:
-        return msg[msg.find("(") + 1:-1]
+        return msg[msg.find("(") + 1 : -1]
     except Exception:
         raise Exception(f"Cant parse FCT msg {msg}")
 
@@ -112,32 +131,53 @@ def parse_PRP(msg) -> str:
     if "PRP" not in msg:
         raise ParseError("This is not an PRP message")
     try:
-        return msg[msg.find("(") + 1:-1]
+        return msg[msg.find("(") + 1 : -1]
     except Exception:
         raise Exception(f"Cant parse PRP msg {msg}")
 
 
-def parse_orr_xdo(msg: str) -> List[str]:
+def parse_arrangement(msg: str, xdo_only=True) -> List[str]:
     """
-    Attempts to parse a specific message configuration
+    Attempts to parse arrangements (may or may not have ORR keyword)
+
+    Examples when xdo_only = False
+    XDO (F BLA - CON) -> ("XDO", "F BLA - CON")
+    ORR (XDO ((RUS FLT BLA) MTO CON)) (ALY (GER RUS TUR) VSS (FRA ENG ITA AUS)) (ABC (F BLA - CON))
+            -> ("XDO", "(RUS FLT BLA) MTO CON"), ("ALY", "ALY (GER RUS TUR) VSS (FRA ENG ITA AUS)"), ("ABC", "ABC (F BLA - CON)")
+
+    Examples when xdo_only = True
+    ORR (XDO(F BLK - CON))(XDO(A RUM - BUD))(XDO(F BLK - BUD))
+            -> "F BLK - CON", "A RUM - BUD", "F BLK - BUD"
+
+    :param msg: message to be parsed
+    :param xdo_only: flag indicating if subarrangement type should be included in the return structure
+    :return: parsed subarrangements
     """
-    # parse may fail
-    if "VSS" in msg:
-        raise ParseError("This looks an ally message")
     try:
         if "ORR" in msg:
-            msg = msg[msg.find("(") + 1:-1]
+            msg = msg[msg.find("(") :]
+        elif "AND" in msg:
+            msg = msg[msg.find("(") :]
         # else:
         #     # remove else since it is a bug to 'XDO (order)'
         #     msg = msg[1:-1]
 
         # split the message at )( points
-        parts = re.split(r"\)\s*\(", msg)
+        parts = []
+        ind = 0
+        while ind < len(msg):
+            next_ind = re.search(r"\)\s*\(", msg[ind:])
+            if next_ind is None:
+                parts.append(msg[ind:].strip())
+                break
+            else:
+                parts.append((msg[ind : ind + next_ind.start() + 1]).strip())
+                ind = ind + next_ind.end() - 1
 
         def extract_suborder_indices(part: str) -> str:
             """
             Finds the start and end indices of suborder in an XDO message
-            For instance, 
+            For instance,
             "XDO (F BLK - CON)" returns (4, 16)
             "XDO(F BLK - CON)" returns (3, 15)
             "XDO ((RUS AMY WAR) MTO PRU)" returns (4, 26)
@@ -145,25 +185,37 @@ def parse_orr_xdo(msg: str) -> List[str]:
             :param part: part of the message representing an arrangement for 1 unit
             :return: the actual order after excluding XDO
             """
-            start_in = part.find("(", part.find("XDO"))
+            match_obj = re.search(r"(XDO|ALY|[A-Z]+)", part)
+            start_in = part.find("(", match_obj.start())
+            suborder_type = match_obj.group()
             parenthesis_cnt = 0
             for i in range(start_in, len(part)):
-                if part[i] == '(':
+                if part[i] == "(":
                     parenthesis_cnt += 1
-                elif part[i] == ')':
+                elif part[i] == ")":
                     parenthesis_cnt -= 1
                 if parenthesis_cnt == 0:
-                    return start_in, i
-            return start_in, -1
-        
+                    return start_in, i, suborder_type
+            return start_in, -1, suborder_type
+
         ans = []
         for part in parts:
-            start, end = extract_suborder_indices(part)
-            ans.append(part[start+1:end])
+            if (
+                part[0] == "("
+            ):  # If there is a parenthesis in the beginning, just remove the extra set of parenthesis from both ends
+                part = part.strip()[1:-1].strip()
+            start, end, suborder_type = extract_suborder_indices(part)
+            if xdo_only:
+                ans.append(part[start + 1 : end])
+            else:
+                if suborder_type == "XDO":
+                    ans.append((suborder_type, part[start + 1 : end]))
+                else:
+                    ans.append((suborder_type, part))
         return ans
 
-    except Exception:
-        raise ParseError("Cant parse ORR XDO msg")
+    except Exception as e:
+        raise ParseError("Cant parse ORR msg")
 
 
 def parse_alliance_proposal(msg: str, recipient: str) -> List[str]:
@@ -174,6 +226,7 @@ def parse_alliance_proposal(msg: str, recipient: str) -> List[str]:
     :param recipient: the power which has received the alliance proposal
     :return: list of allies in the proposal
     """
+    recipient = recipient[:3]
     groups = re.findall(r"\(([a-zA-Z\s]*)\)", msg)
 
     if len(groups) != 2:
@@ -191,7 +244,10 @@ def parse_alliance_proposal(msg: str, recipient: str) -> List[str]:
     allies.remove(recipient)
 
     if allies:
-        return allies
+        return [
+            POWER_NAMES_DICT[ally] if ally in POWER_NAMES_DICT else ally
+            for ally in allies
+        ]
     else:
         raise ParseError("A minimum of 2 powers are needed for an alliance")
 
@@ -264,6 +320,8 @@ def get_province_from_order(order):
         return parts[1]
     else:
         return order_tokens[0]
+
+
 class MessagesData:
     def __init__(self):
         self.messages = []
@@ -319,15 +377,29 @@ def sort_messages_by_most_recent(messages: List[Message]):
 
 
 @gen.coroutine
-def get_state_value(bot, game, power_name):
+def get_state_value(bot, game, power_name, option="default"):
     # rollout the game --- orders in rollout are from dipnet
     # state value
+    firststep_sc = len(game.get_centers(power_name))
+    dipnet_comparison = {power: 0 for power in game.map.powers}
+    support_count = {power: 0 for power in game.map.powers}
     for i in range(bot.rollout_length):
-        # print('rollout: ', i)
-        for power in game.powers:
-            orders = yield bot.brain.get_orders(game, power)
-            # print(power + ': ')
-            # print(orders)
+
+        for power in game.map.powers:
+            if option == "samplingbeam":
+                list_order, prob_order = yield bot.brain.get_beam_orders(game, power)
+
+                if len(list_order) > 0:
+                    prob_order = np.array(prob_order)
+                    prob_order /= prob_order.sum()
+                    orders_index = [i for i in range(len(list_order))]
+                    select_index = np.random.choice(orders_index, p=prob_order)
+                    orders = list_order[select_index]
+                else:
+                    orders = yield bot.brain.get_orders(game, power)
+            elif option == "default":
+                orders = yield bot.brain.get_orders(game, power)
+
             game.set_orders(
                 power_name=power,
                 orders=orders[: min(bot.rollout_n_order, len(orders))],
@@ -350,6 +422,36 @@ def get_best_orders(bot, proposal_order: dict, shared_order: dict):
         proposal_order[best_proposer]: the orders from the best proposer
     """
 
+    def __deepcopy__(game):
+        """Fast deep copy implementation, from Paquette's game engine https://github.com/diplomacy/diplomacy"""
+        if game.__class__.__name__ != "Game":
+            cls = list(game.__class__.__bases__)[0]
+            result = cls.__new__(cls)
+        else:
+            cls = game.__class__
+            result = cls.__new__(cls)
+
+        # Deep copying
+        for key in game._slots:
+            if key in [
+                "map",
+                "renderer",
+                "powers",
+                "channel",
+                "notification_callbacks",
+                "data",
+                "__weakref__",
+            ]:
+                continue
+            setattr(result, key, deepcopy(getattr(game, key)))
+        setattr(result, "map", game.map)
+        setattr(result, "powers", {})
+        for power in game.powers.values():
+            result.powers[power.name] = deepcopy(power)
+            setattr(result.powers[power.name], "game", result)
+        result.role = strings.SERVER_TYPE
+        return result
+
     # initialize state value for each proposal
     state_value = {power: -10000 for power in bot.game.powers}
 
@@ -361,7 +463,7 @@ def get_best_orders(bot, proposal_order: dict, shared_order: dict):
             proposed = True
 
             # simulate game by copying the current one
-            simulated_game = bot.game.__deepcopy__(None)
+            simulated_game = __deepcopy__(bot.game)
 
             # censor aggressive orders
             unit_orders = get_non_aggressive_orders(
@@ -372,11 +474,15 @@ def get_best_orders(bot, proposal_order: dict, shared_order: dict):
             simulated_game.set_orders(power_name=bot.power_name, orders=unit_orders)
 
             # consider shared orders in a simulated game
-            for other_power, power_orders in shared_order.items():
+            for other_power in simulated_game.powers:
 
                 # if they are not sharing any info about their orders then assume that they are DipNet-based
-                if not power_orders:
-                    power_orders = yield bot.brain.get_orders(game, other_power)
+                if other_power in shared_order:
+                    power_orders = shared_order[other_power]
+                else:
+                    power_orders = yield bot.brain.get_orders(
+                        simulated_game, other_power
+                    )
                 simulated_game.set_orders(power_name=other_power, orders=power_orders)
 
             # process current turn
@@ -389,43 +495,32 @@ def get_best_orders(bot, proposal_order: dict, shared_order: dict):
 
     # get power name that gives the max state value
     best_proposer = max(state_value, key=state_value.get)
-
     return best_proposer, proposal_order[best_proposer]
 
 
+def smart_select_support_proposals(
+    possible_support_proposals: Dict[str, List[Tuple[str, str, str]]]
+):
+    optimal_possible_support_proposals = defaultdict(list)
+    optimal_ordering_units = set()
+    order_proposal_mapping = defaultdict(list)
+    for ord_list in possible_support_proposals.values():
+        for ordering_unit, move_to_support, order in ord_list:
+            order_proposal_mapping[move_to_support].append(
+                (ordering_unit, move_to_support, order)
+            )
+    order_proposal_mapping_sorted = [x for x in order_proposal_mapping.items()]
+    order_proposal_mapping_sorted.sort(key=lambda x: len(x[1]), reverse=True)
+    for move_to_support, order_list in order_proposal_mapping_sorted:
+        for ordering_unit, move_to_support, order in order_list:
+            if ordering_unit not in optimal_ordering_units:
+                optimal_possible_support_proposals[ordering_unit].append(
+                    (ordering_unit, move_to_support, order)
+                )
+            if len(order_list) > 1:
+                optimal_ordering_units.add(ordering_unit)
+    return optimal_possible_support_proposals
+
+
 if __name__ == "__main__":
-    game = Game()
-    powers = list(game.powers)
-    power_0 = powers[0]
-    power_1 = powers[1]
-    msg_obj1 = Message(
-        sender=power_0,
-        recipient=power_1,
-        message="HELLO",
-        phase=game.get_current_phase(),
-    )
-    game.add_message(message=msg_obj1)
-    msg_obj2 = Message(
-        sender=power_1,
-        recipient=power_0,
-        message="GOODBYE",
-        phase=game.get_current_phase(),
-    )
-    game.add_message(message=msg_obj2)
-    msgs = [msg_obj2, msg_obj1]
-
-    assert sort_messages_by_most_recent(msgs)[0].message == "HELLO"
-
-    # if __name__ == "__main__":
-    # from diplomacy import Game
-    # # game instance
-    # game = Game()
-    # print(AND(["GO HOME", "BAD MONKEY"]))
-    # # print(AND(["GO HOME"]))
-    # print(XDO(["Move back", "Move"]))
-    msg = ORR(XDO(["Move back", "Move"]))
-    print(parse_orr_xdo(msg))
-    # # print(ALY(["p1", "p2"]))
-    # # print(ALY(["GERMANY", "RUSSIA"], game))
-    # # print(parse_alliance_proposal("ALY (GERMANY RUSSIA) VSS (FRANCE ENGLAND ITALY TURKEY AUSTRIA)", "RUSSIA"))
-    # print(is_order_aggressive("A CON BUL", "TURKEY", game))
+    pass

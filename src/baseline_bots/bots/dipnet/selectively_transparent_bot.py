@@ -8,14 +8,11 @@ from DAIDE import config
 
 from baseline_bots.bots.dipnet.transparent_bot import TransparentBot
 from baseline_bots.utils import (
-    FCT,
-    ORR,
-    XDO,
     MessagesData,
     get_other_powers,
     is_order_aggressive,
+    parse_arrangement,
     parse_FCT,
-    parse_orr_xdo,
 )
 
 config.ORDERS_DAIDE = False

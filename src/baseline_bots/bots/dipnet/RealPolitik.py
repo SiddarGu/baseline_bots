@@ -21,8 +21,8 @@ from baseline_bots.utils import (
     get_order_tokens,
     get_other_powers,
     get_state_value,
+    parse_arrangement,
     parse_FCT,
-    parse_orr_xdo,
 )
 
 
@@ -76,13 +76,15 @@ class RealPolitik(DipnetBot):
                 # game_msg = game_msg[1]
                 # this is for sharing info orders
                 if "FCT" in game_msg.message:
-                    shared_order[game_msg.sender] = parse_orr_xdo(
+                    shared_order[game_msg.sender] = parse_arrangement(
                         parse_FCT(game_msg.message)
                     )
                 # this is for proposal orders
                 else:
                     # print(game_msg.message)
-                    proposal_order[game_msg.sender] = parse_orr_xdo(game_msg.message)
+                    proposal_order[game_msg.sender] = parse_arrangement(
+                        game_msg.message
+                    )
                     # print(proposal_order[game_msg.sender])
 
             best_proposer, _ = get_best_orders(self, proposal_order, shared_order)
