@@ -218,6 +218,18 @@ async def play(
     print("-" * 30 + "GAME COMPLETE" + "-" * 30)
 
 
+async def run_game():
+    await asyncio.gather(*[launch(
+            hostname='shade.tacc.utexas.edu',
+            port=port,
+            game_id='ALLAN_test_translation',
+            power_name=power_name,
+            bot_type='RandomProposerBot_AsyncBot',
+            sleep_delay=sleep_delay,
+            outdir=outdir,
+            discount_factor=discount_factor,
+        ) for power_name in POWERS])
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="ALLAN-DIP: Team ALLAN's Diplomacy Agent"
@@ -270,19 +282,17 @@ if __name__ == "__main__":
     outdir = args.outdir
     power = args.power
 
-    if game_id == None:
-        print("Game ID required")
-        sys.exit(1)
+    asyncio.run(run_game())
 
-    asyncio.run(
+    """ asyncio.run(
         launch(
             hostname=host,
             port=port,
-            game_id=game_id,
+            game_id='ALLAN_test_translation',
             power_name=power,
             bot_type=bot_type,
             sleep_delay=sleep_delay,
             outdir=outdir,
             discount_factor=discount_factor,
         )
-    )
+    ) """

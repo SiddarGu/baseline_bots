@@ -7,6 +7,7 @@ __author__ = "Sander Schulhoff"
 __email__ = "sanderschulhoff@gmail.com"
 
 # from diplomacy_research.models.state_space import get_order_tokens
+import parsimonious
 import re
 from collections import defaultdict
 from copy import deepcopy
@@ -15,9 +16,11 @@ from typing import Dict, List, Tuple, Union
 import numpy as np
 from DAIDE import ALY, FCT, HUH, ORR, PRP, XDO
 from DAIDE.utils.exceptions import ParseError
+from daidepp import create_daide_grammar, daide_visitor
 from diplomacy import Game, Message
 from diplomacy.utils import strings
 from tornado import gen
+
 
 POWER_NAMES_DICT = {
     "RUS": "RUSSIA",
@@ -327,7 +330,17 @@ class MessagesData:
         self.messages = []
 
     def add_message(self, recipient: str, message: str):
-        self.messages.append({"recipient": recipient, "message": message})
+        try:
+            grammar = create_daide_grammar(level=130, allow_just_arrangement=True, string_type='all')
+            parse_tree = grammar.parse(message)
+            output = daide_visitor.visit(parse_tree)
+            output = " ".join(output.split())
+            if not output.endswith('.') or not output.endswith('?'):
+                output += '.'
+        except parsimonious.exceptions.ParseError:
+            output = 'ERROR parsing ' + message
+        
+        self.messages.append({"recipient": recipient, "message": str(output)})
 
     def __iter__(self):
         return iter(self.messages)
