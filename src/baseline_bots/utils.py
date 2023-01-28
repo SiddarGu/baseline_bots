@@ -333,14 +333,14 @@ class MessagesData:
         try:
             grammar = create_daide_grammar(level=130, allow_just_arrangement=True, string_type='all')
             parse_tree = grammar.parse(message)
-            output = daide_visitor.visit(parse_tree)
+            output = str(daide_visitor.visit(parse_tree))
             output = " ".join(output.split())
             if not output.endswith('.') or not output.endswith('?'):
                 output += '.'
         except parsimonious.exceptions.ParseError:
             output = 'ERROR parsing ' + message
         
-        self.messages.append({"recipient": recipient, "message": str(output)})
+        self.messages.append({"recipient": recipient, "message": output})
 
     def __iter__(self):
         return iter(self.messages)
