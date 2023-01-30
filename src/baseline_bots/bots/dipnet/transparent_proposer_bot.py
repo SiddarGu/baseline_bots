@@ -28,7 +28,7 @@ class TransparentProposerDipBot(ProposerDipBot):
 
     @gen.coroutine
     def gen_messages(self, _) -> MessagesData:
-        ret_obj = MessagesData()
+        ret_obj = MessagesData(self.power_name)
         final_order = {
             other_power: None
             for other_power in get_other_powers([self.power_name], self.game)

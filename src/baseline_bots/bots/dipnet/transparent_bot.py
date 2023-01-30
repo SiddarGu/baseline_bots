@@ -48,7 +48,7 @@ class TransparentBot(DipnetBot):
         orders = yield from self.brain.get_orders(self.game, self.power_name)
         self.orders.add_orders(orders, overwrite=True)
         self.my_orders_informed = False
-        comms_obj = MessagesData()
+        comms_obj = MessagesData(self.power_name)
         if self.game.get_current_phase()[-1] != "M":
             return comms_obj
         parsed_orders = self.parse_messages(rcvd_messages)

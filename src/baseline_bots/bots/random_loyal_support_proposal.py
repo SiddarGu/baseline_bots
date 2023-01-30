@@ -301,7 +301,7 @@ class RandomLSPBot(BaselineMsgRoundBot):
                     sel_order = random.choice(subset_orders)
                     self.orders.add_order(sel_order, overwrite=True)
 
-        comms_obj = MessagesData()
+        comms_obj = MessagesData(self.power_name)
 
         if self.are_msg_rounds_done():
             raise "Wrapper's invocation error: Comms function called after comms rounds are over"

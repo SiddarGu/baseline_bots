@@ -51,7 +51,7 @@ class RealPolitik(DipnetBot):
         # return set of order with highest state value
         # if no xdo order set -> then return dipnet orders
         self.orders = OrdersData()
-        ret_obj = MessagesData()
+        ret_obj = MessagesData(self.power_name)
         if self.curr_msg_round != self.total_msg_rounds:
             self.curr_msg_round += 1
             return ret_obj

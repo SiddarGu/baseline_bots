@@ -592,7 +592,7 @@ class SmartOrderAccepterBot(DipnetBot):
         orders_data = OrdersData()
         orders_data.add_orders(orders)
 
-        msgs_data = MessagesData()
+        msgs_data = MessagesData(self.power_name)
 
         print("debug: Fetched orders", orders)
 

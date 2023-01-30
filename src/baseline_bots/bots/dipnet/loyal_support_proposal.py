@@ -588,7 +588,7 @@ class LSP_DipBot(DipnetBot):
                 self.orders.add_orders(new_orders, overwrite=True)
 
         # print(f"Selected orders for {self.power_name}: {self.orders.get_list_of_orders()}")
-        comms_obj = MessagesData()
+        comms_obj = MessagesData(self.power_name)
 
         # Parse comms receieved
         comms_rcvd = self.interpret_orders(rcvd_messages)

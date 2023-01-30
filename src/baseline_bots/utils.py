@@ -20,6 +20,7 @@ from daidepp import create_daide_grammar, daide_visitor
 from diplomacy import Game, Message
 from diplomacy.utils import strings
 from tornado import gen
+from daidepp.utils import gen_English
 
 
 POWER_NAMES_DICT = {
@@ -326,19 +327,12 @@ def get_province_from_order(order):
 
 
 class MessagesData:
-    def __init__(self):
+    def __init__(self, power):
         self.messages = []
+        self.power = power
 
     def add_message(self, recipient: str, message: str):
-        try:
-            grammar = create_daide_grammar(level=130, allow_just_arrangement=True, string_type='all')
-            parse_tree = grammar.parse(message)
-            output = str(daide_visitor.visit(parse_tree))
-            output = " ".join(output.split())
-            if not output.endswith('.') or not output.endswith('?'):
-                output += '.'
-        except parsimonious.exceptions.ParseError:
-            output = 'ERROR parsing ' + message
+        output = gen_English(message, self.power, recipient)
         
         self.messages.append({"recipient": recipient, "message": output})
 

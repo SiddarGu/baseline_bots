@@ -42,7 +42,7 @@ class RandomStanceBot(BaselineBot):
 
     def gen_messages(self):
         # Return data initialization
-        messages_obj, self.orders_obj = MessagesData(), OrdersData()
+        messages_obj, self.orders_obj = MessagesData(self.power_name), OrdersData()
 
         # get proposed orders sent by other countries
         messages = game.filter_messages(

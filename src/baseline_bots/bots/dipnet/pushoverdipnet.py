@@ -37,7 +37,7 @@ class PushoverDipnet(DipnetBot):
     @gen.coroutine
     def gen_messages(self, rcvd_messages):
         self.orders = OrdersData()
-        reply_obj = MessagesData()
+        reply_obj = MessagesData(self.power_name)
 
         orders = yield self.brain.get_orders(self.game, self.power_name)
         self.orders.add_orders(orders, overwrite=True)

@@ -31,7 +31,7 @@ class LoyalBot(BaselineBot):
 
     def gen_messages(self, rcvd_messages):
         # Return data initialization
-        ret_obj = MessagesData()
+        ret_obj = MessagesData(self.power_name)
 
         if len(rcvd_messages) == 0:
             return ret_obj

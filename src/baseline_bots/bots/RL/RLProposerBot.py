@@ -37,7 +37,7 @@ class RLProposerBot(RLOrderBot):
 
     @gen.coroutine
     def gen_messages(self, rcvd_messages: List[Message]) -> MessagesData:
-        ret_obj = MessagesData()
+        ret_obj = MessagesData(self.power_name)
         if self.curr_msg_round > self.total_msg_rounds:
             self.curr_msg_round += 1
             return ret_obj

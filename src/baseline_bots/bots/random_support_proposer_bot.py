@@ -24,7 +24,7 @@ class RandomSupportProposerBot(BaselineBot):
     def gen_messages(self):
 
         # Return data initialization
-        messages_obj, self.orders_obj = MessagesData(), OrdersData()
+        messages_obj, self.orders_obj = MessagesData(self.power_name), OrdersData()
 
         # TODO: Ensure that supporting province and province to be attacked are not owned by the same power
         # TODO: Ensure that attack should not be to a province that the power already owns

@@ -39,7 +39,7 @@ class PushoverBot(BaselineBot):
 
     def __call__(self, rcvd_messages):
         ret_obj = OrdersData()
-        reply_obj = MessagesData()
+        reply_obj = MessagesData(self.power_name)
 
         if len(rcvd_messages) == 0:
             self.orders = ret_obj

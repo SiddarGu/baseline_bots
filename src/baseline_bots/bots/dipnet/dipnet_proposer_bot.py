@@ -34,7 +34,7 @@ class ProposerDipBot(DipnetBot):
     @gen.coroutine
     def gen_messages(self, _) -> MessagesData:
         # Return data initialization
-        ret_obj = MessagesData()
+        ret_obj = MessagesData(self.power_name)
         if self.curr_msg_round == 1:
             for other_power in get_other_powers([self.power_name], self.game):
                 # get stance of other_power

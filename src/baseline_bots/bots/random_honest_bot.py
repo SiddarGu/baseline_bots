@@ -21,7 +21,7 @@ class RandomHonestBot(BaselineMsgRoundBot):
         self.decided_this_round = False
 
     def gen_messages(self, rcvd_messages):
-        ret_obj = MessagesData()
+        ret_obj = MessagesData(self.power_name)
         # orders will only change at next message round
         # for all other powers
         for other_power in [

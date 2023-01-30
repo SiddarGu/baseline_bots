@@ -154,7 +154,7 @@ class TestSOABot(AsyncTestCase):
         ]
 
         for tc_ip, tc_op in RESPOND_TO_INV_ORDERS_TC:
-            msg_data = MessagesData()
+            msg_data = MessagesData(self.power_name)
             yield soa_bot.respond_to_invalid_orders(tc_ip, msg_data)
             assert msg_data.messages == tc_op, (msg_data.messages, tc_op)
 
@@ -179,7 +179,7 @@ class TestSOABot(AsyncTestCase):
         ]
 
         for tc_ip, tc_op in RESPOND_TO_ALLIANCES_TC:
-            msg_data = MessagesData()
+            msg_data = MessagesData(self.power_name)
             soa_bot.alliances = tc_ip
             yield soa_bot.respond_to_alliance_messages(msg_data)
             assert msg_data.messages == tc_op, (msg_data.messages, tc_op)

@@ -30,7 +30,7 @@ class RandomHonestOrderAccepterBot(BaselineMsgRoundBot):
     def phase_init(self):
         super().phase_init()
         self.cur_msg_round = 0
-        self.messages = MessagesData()
+        self.messages = MessagesData(self.power_name)
         self.orders = OrdersData()
 
     def gen_messages(self, rcvd_messages):
@@ -45,7 +45,7 @@ class RandomHonestOrderAccepterBot(BaselineMsgRoundBot):
         if self.cur_msg_round == self.total_msg_rounds:
             pass
         else:
-            return {"messages": MessagesData(), "orders": OrdersData()}
+            return {"messages": MessagesData(self.power_name), "orders": OrdersData()}
 
         proposed_orders = []
         proposed_orders_by_country = {}
@@ -66,7 +66,7 @@ class RandomHonestOrderAccepterBot(BaselineMsgRoundBot):
 
         orders_data = OrdersData()
         orders_data.add_orders(orders)
-        messages_data = MessagesData()
+        messages_data = MessagesData(self.power_name)
         # send messages to other powers if this bot has taken some
         # of their messages
         for other_power in proposed_orders_by_country:

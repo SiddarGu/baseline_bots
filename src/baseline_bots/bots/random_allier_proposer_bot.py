@@ -20,7 +20,7 @@ class RandomAllierProposerBot(RandomProposerBot):
         self.alliance_props_sent = False
 
     def gen_messages(self, rcvd_messages):
-        ret_msgs = MessagesData()
+        ret_msgs = MessagesData(self.power_name)
         if self.alliance_props_sent:
             # send random action proposals
             return super().gen_messages(rcvd_messages)

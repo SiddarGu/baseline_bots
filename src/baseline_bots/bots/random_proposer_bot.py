@@ -26,7 +26,7 @@ class RandomProposerBot(BaselineBot):
 
     def gen_messages(self, _) -> MessagesData:
         # Return data initialization
-        ret_obj = MessagesData()
+        ret_obj = MessagesData(self.power_name)
 
         if self.game.get_current_phase()[-1] != "M":
             return ret_obj
