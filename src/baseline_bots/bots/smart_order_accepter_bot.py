@@ -10,6 +10,7 @@ from DAIDE import FCT, HUH, ORR, PRP, XDO, YES
 from diplomacy import Message
 from stance_vector import ActionBasedStance, ScoreBasedStance
 from tornado import gen
+from daidepp.utils import gen_English, post_process
 
 from baseline_bots.bots.dipnet.dipnet_bot import DipnetBot
 from baseline_bots.parsing_utils import (
@@ -90,7 +91,7 @@ class SmartOrderAccepterBot(DipnetBot):
         msg_obj = Message(
             sender=self.power_name,
             recipient=recipient,
-            message=message,
+            message=[post_process(gen_English(message, self.power_name, recipient), self.power_name, recipient) for message in message.messages],
             phase=self.game.get_current_phase(),
         )
         await self.game.send_game_message(message=msg_obj)

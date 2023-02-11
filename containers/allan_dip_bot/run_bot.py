@@ -228,6 +228,8 @@ async def play(
 
 
 async def run_game():
+    # docker build --no-cache -t allan_dip_bot .
+    # docker run -it allan_dip_bot
     power_list = [
     ("AUSTRIA", "RandomProposerBot_AsyncBot"), 
     ("ENGLAND", "RandomProposerBot_AsyncBot"),
