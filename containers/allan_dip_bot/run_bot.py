@@ -229,13 +229,13 @@ async def play(
 
 async def run_game():
     power_list = [
-    ("AUSTRIA", "RandomAllierProposerBot"), 
-    ("ENGLAND", "RandomAllierProposerBot"),
-    ("FRANCE", "RandomHonestBot"),
-    ("GERMANY", "RandomHonestBot"),
-    ("ITALY", "RandomHonestBot"),
-    ("RUSSIA", "RandomHonestOrderAccepterBot"),
-    ("TURKEY", "RandomHonestOrderAccepterBot")]
+    ("AUSTRIA", "RandomProposerBot_AsyncBot"), 
+    ("ENGLAND", "RandomProposerBot_AsyncBot"),
+    ("FRANCE", "RandomProposerBot_AsyncBot"),
+    ("GERMANY", "RandomProposerBot_AsyncBot"),
+    ("ITALY", "SmartOrderAccepterBot"),
+    ("RUSSIA", "SmartOrderAccepterBot"),
+    ("TURKEY", "SmartOrderAccepterBot")]
 
     await asyncio.gather(*[launch(
             hostname='shade.tacc.utexas.edu',
@@ -245,7 +245,7 @@ async def run_game():
             bot_type=bot_type,
             sleep_delay=sleep_delay,
             outdir=outdir,
-            discount_factor=discount_factor,
+            discount_factor=0.5,
         ) for power_name, bot_type in power_list])
 
 if __name__ == "__main__":
