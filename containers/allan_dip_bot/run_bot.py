@@ -144,6 +144,12 @@ async def play(
         bot = RandomProposerBot_AsyncBot(power_name, game)
     elif bot_type == "SmartOrderAccepterBot":
         bot = SmartOrderAccepterBot(power_name, game, discount_factor)
+    elif bot_type == "RandomAllierProposerBot":
+        bot = RandomAllierProposerBot(power_name, game)
+    elif bot_type == "RandomHonestBot":
+        bot = RandomHonestBot(power_name, game)
+    elif bot_type == "RandomHonestOrderAccepterBot":
+        bot = RandomHonestOrderAccepterBot(power_name, game)
 
     # Wait while game is still being formed
     print("Waiting for game to start", end=" ")
