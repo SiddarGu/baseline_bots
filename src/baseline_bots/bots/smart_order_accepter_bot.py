@@ -91,7 +91,7 @@ class SmartOrderAccepterBot(DipnetBot):
         msg_obj = Message(
             sender=self.power_name,
             recipient=recipient,
-            message=[post_process(gen_English(preprocess(item), self.power_name, recipient), self.power_name, recipient) for item in message.messages],
+            message=[post_process(gen_English(preprocess(item), self.power_name, recipient), self.power_name, recipient) for item in iter(message)],
             phase=self.game.get_current_phase(),
         )
         await self.game.send_game_message(message=msg_obj)
