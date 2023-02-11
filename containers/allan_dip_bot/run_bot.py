@@ -25,6 +25,9 @@ from baseline_bots.bots.dipnet.no_press_bot import NoPressDipBot
 from baseline_bots.bots.dipnet.transparent_bot import TransparentBot
 from baseline_bots.bots.random_proposer_bot import RandomProposerBot_AsyncBot
 from baseline_bots.bots.smart_order_accepter_bot import SmartOrderAccepterBot
+from baseline_bots.bots.random_allier_proposer_bot import RandomAllierProposerBot
+from baseline_bots.bots.random_honest_bot import RandomHonestBot
+from baseline_bots.bots.random_honest_order_accepter_bot import RandomHonestOrderAccepterBot
 
 POWERS = ["AUSTRIA", "ENGLAND", "FRANCE", "GERMANY", "ITALY", "RUSSIA", "TURKEY"]
 
@@ -219,16 +222,25 @@ async def play(
 
 
 async def run_game():
+    power_list = [
+    ("AUSTRIA", "RandomAllierProposerBot"), 
+    ("ENGLAND", "RandomAllierProposerBot"),
+    ("FRANCE", "RandomHonestBot"),
+    ("GERMANY", "RandomHonestBot"),
+    ("ITALY", "RandomHonestBot"),
+    ("RUSSIA", "RandomHonestOrderAccepterBot"),
+    ("TURKEY", "RandomHonestOrderAccepterBot")]
+
     await asyncio.gather(*[launch(
             hostname='shade.tacc.utexas.edu',
             port=port,
             game_id='ALLAN_test_translation',
             power_name=power_name,
-            bot_type='RandomProposerBot_AsyncBot',
+            bot_type=bot_type,
             sleep_delay=sleep_delay,
             outdir=outdir,
             discount_factor=discount_factor,
-        ) for power_name in POWERS])
+        ) for power_name, bot_type in power_list])
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
