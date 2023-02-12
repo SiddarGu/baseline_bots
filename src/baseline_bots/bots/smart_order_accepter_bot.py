@@ -88,10 +88,11 @@ class SmartOrderAccepterBot(DipnetBot):
         :param recipient: The name of the recipient power
         :param message: MessagesData object containing set of all messages
         """
+        # post_process(gen_English(preprocess(message), self.power_name, recipient), self.power_name, recipient)
         msg_obj = Message(
             sender=self.power_name,
             recipient=recipient,
-            message=post_process(gen_English(preprocess(message), self.power_name, recipient), self.power_name, recipient),
+            message=message,
             phase=self.game.get_current_phase(),
         )
         await self.game.send_game_message(message=msg_obj)
