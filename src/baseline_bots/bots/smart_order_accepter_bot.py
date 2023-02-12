@@ -88,11 +88,10 @@ class SmartOrderAccepterBot(DipnetBot):
         :param recipient: The name of the recipient power
         :param message: MessagesData object containing set of all messages
         """
-        # post_process(gen_English(preprocess(message), self.power_name, recipient), self.power_name, recipient)
         msg_obj = Message(
             sender=self.power_name,
             recipient=recipient,
-            message=message,
+            message=post_process(gen_English(preprocess(message), self.power_name, recipient), self.power_name, recipient),
             phase=self.game.get_current_phase(),
         )
         await self.game.send_game_message(message=msg_obj)
@@ -649,11 +648,11 @@ class SmartOrderAccepterBot(DipnetBot):
             msgs_data = yield self.gen_messages(orders_data.get_list_of_orders(), msgs_data)
             if self.game.phase == "SPRING 1901 MOVEMENT":
                 for pow in opps:
-                    vss = [country for country in list(powers.copy().keys()) if country != pow and country != self.power_name]
+                    vss = [country[:3] for country in list(powers.copy().keys()) if country != pow and country != self.power_name]
                     vss_str = " ".join(vss)
-                    msgs_data.add_message(pow, f"ALY ({self.power_name} {pow}) VSS ({vss_str})")
+                    msgs_data.add_message(pow, f"ALY ({self.power_name[:3]} {pow[:3]}) VSS ({vss_str})")
                     if not(self.test_mode):
-                        yield self.send_message(pow, f"ALY ({self.power_name} {pow}) VSS ({vss_str})")
+                        yield self.send_message(pow, f"ALY ({self.power_name[:3]} {pow[:3]}) VSS ({vss_str})")
 
             # send ALY requests at the start of the game
             yield self.respond_to_invalid_orders(invalid_proposal_orders, msgs_data)
