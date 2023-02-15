@@ -231,16 +231,19 @@ async def run_game():
     # docker build --no-cache -t allan_dip_bot .
     # docker run -it allan_dip_bot
     power_list = [
-    ("AUSTRIA", "RandomProposerBot_AsyncBot"), 
-    ("ENGLAND", "RandomProposerBot_AsyncBot"),
-    ("FRANCE", "RandomProposerBot_AsyncBot"),
-    ("GERMANY", "RandomProposerBot_AsyncBot"),
+    ("AUSTRIA", "SmartOrderAccepterBot"), 
+    ("ENGLAND", "SmartOrderAccepterBot"),
+    ("FRANCE", "SmartOrderAccepterBot"),
+    ("GERMANY", "SmartOrderAccepterBot"),
     ("ITALY", "SmartOrderAccepterBot"),
     ("RUSSIA", "SmartOrderAccepterBot"),
     ("TURKEY", "SmartOrderAccepterBot")]
 
+    # hostname = 'shade.tacc.utexas.edu'
+    # hostname = '34.86.29.128'
+
     await asyncio.gather(*[launch(
-            hostname='shade.tacc.utexas.edu',
+            hostname = '34.86.29.128',
             port=port,
             game_id='ALLAN_test_translation',
             power_name=power_name,
